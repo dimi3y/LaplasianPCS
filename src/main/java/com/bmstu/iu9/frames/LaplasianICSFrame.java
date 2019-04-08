@@ -6,13 +6,17 @@ import org.opencv.highgui.HighGui;
 import org.opencv.highgui.ImageWindow;
 import org.opencv.imgcodecs.Imgcodecs;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 public class LaplasianICSFrame {
 
     private JFrame frame;
-    private ImageWindow imageWindow;
+    private BufferedImage image;
 
     public void build() {
         frame = new JFrame("Image contour selection");
@@ -35,12 +39,19 @@ public class LaplasianICSFrame {
             fileChooser.setAcceptAllFileFilterUsed( false );
 
             if ( fileChooser.showOpenDialog( frame ) == JFileChooser.APPROVE_OPTION ) {
-                imageWindow = new ImageWindow("", 0);
                 if ( fileChooser.getSelectedFile().exists() ) {
+                    image = null;
+                    frame.getContentPane().removeAll();
                     Mat laplasianICSresult = LaplasianICS.run( fileChooser.getSelectedFile().getAbsolutePath() );
-                    imageWindow.setMat( laplasianICSresult );
-                    imageWindow.setFrameLabelVisible(frame,
-                            new JLabel( new ImageIcon( HighGui.toBufferedImage( laplasianICSresult ) ) ) );
+                    JScrollPane scrollPane = new JScrollPane(new ImagePanel( (image = (BufferedImage) HighGui.toBufferedImage( laplasianICSresult ) ) ));
+                    scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                    scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+                    scrollPane.setBounds(0, 0, frame.getWidth(), frame.getHeight());
+                    JPanel contentPane = new JPanel(null);
+                    contentPane.setPreferredSize(new Dimension(frame.getWidth(), frame.getHeight()));
+                    contentPane.add(scrollPane);
+                    frame.setContentPane(contentPane);
+                    frame.pack();
                 } else {
                     JOptionPane.showMessageDialog( frame,
                             "Error opening image",
@@ -54,13 +65,22 @@ public class LaplasianICSFrame {
         saveItem.setFont( font );
         fileMenu.add( saveItem );
         saveItem.addActionListener( e -> {
-            if ( imageWindow != null ) {
+            if ( image != null ) {
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.addChoosableFileFilter( new ImageFilter() );
                 fileChooser.setAcceptAllFileFilterUsed( false );
 
                 if ( fileChooser.showOpenDialog( frame ) == JFileChooser.APPROVE_OPTION ) {
-                    Imgcodecs.imwrite(fileChooser.getSelectedFile().getAbsolutePath(), imageWindow.img);
+                    try {
+                        ImageIO.write(image, ImageFilter.getExtension(fileChooser.getSelectedFile()), fileChooser.getSelectedFile());
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog( frame,
+                            "Invalid file name",
+                            "Warning",
+                            JOptionPane.WARNING_MESSAGE );
                 }
             } else {
                 JOptionPane.showMessageDialog( frame,
@@ -74,7 +94,8 @@ public class LaplasianICSFrame {
         closeItem.setFont( font );
         fileMenu.add( closeItem );
         closeItem.addActionListener( e -> {
-            imageWindow = null;
+            image = null;
+            frame.getContentPane().removeAll();
             frame.repaint();
         } );
 
@@ -90,7 +111,7 @@ public class LaplasianICSFrame {
 
         frame.setJMenuBar(menuBar);
 
-        frame.setSize(560, 200);
+        frame.setSize(1700, 1000);
         frame.setLocationRelativeTo( null );
         frame.setVisible( true );
     }
